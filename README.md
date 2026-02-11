@@ -24,7 +24,21 @@ A browser-based SharePoint file synchronization tool that copies files from one 
 - **State Management**: Zustand
 - **UI**: Material-UI v6
 
-## Quick Start
+## 🚀 Using the Deployed App (No Setup Required!)
+
+**Live Demo**: https://vineeththomasalex.github.io/SharePointCopyBot/
+
+You can use the deployed app without any local installation:
+
+1. **Open the app** at the URL above
+2. **Click "Go to Settings"** when you see the credentials warning
+3. **Register your own Azure AD app** (free, takes 5 minutes - see [AZURE_AD_SETUP.md](./AZURE_AD_SETUP.md))
+4. **Enter your Azure AD credentials** in Settings
+5. **Return to login** and sign in with Microsoft
+
+Your credentials are stored securely in your browser's IndexedDB and never leave your device!
+
+## Quick Start (Local Development)
 
 ### Prerequisites
 
@@ -125,96 +139,43 @@ See [AZURE_AD_SETUP.md](./AZURE_AD_SETUP.md) for detailed instructions with scre
 
 ## Deployment to GitHub Pages
 
+This project uses **npm gh-pages** for simple deployment:
+
 ### 1. Update Vite Configuration
 
-The `vite.config.ts` is already configured with:
+The `vite.config.ts` should have the correct base path matching your repo name:
 ```typescript
-base: '/SharePointBot/'
+base: '/SharePointCopyBot/'  // Match your GitHub repo name
 ```
 
-This matches your GitHub repository name. If your repo has a different name, update this value.
+### 2. Deploy
 
-### 2. Add Production Redirect URI
+Simply run:
+```bash
+npm run deploy
+```
+
+This will:
+- Build the project
+- Push the build to the `gh-pages` branch
+- Automatically deploy to GitHub Pages
+
+### 3. Enable GitHub Pages (First Time Only)
+
+1. Go to your GitHub repository **Settings** → **Pages**
+2. Under **Source**, select branch: `gh-pages`
+3. Click **Save**
+
+Your app will be available at: `https://YOUR_USERNAME.github.io/REPO_NAME/`
+
+### 4. Add Production Redirect URI
 
 In your Azure AD app registration:
 1. Go to **Authentication**
-2. Add redirect URI: `https://YOUR_USERNAME.github.io/SharePointBot/`
+2. Add redirect URI: `https://YOUR_USERNAME.github.io/REPO_NAME/`
 3. Click **Save**
 
-### 3. Create GitHub Actions Workflow
-
-Create `.github/workflows/deploy.yml`:
-
-```yaml
-name: Deploy to GitHub Pages
-
-on:
-  push:
-    branches: [ main ]
-  workflow_dispatch:
-
-permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build
-        run: npm run build
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: './dist'
-
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
-```
-
-### 4. Enable GitHub Pages
-
-1. Go to your GitHub repository **Settings**
-2. Navigate to **Pages**
-3. Under **Source**, select **GitHub Actions**
-4. Push changes to trigger deployment
-
-### 5. Update Environment Variables for Production
-
-The app will use the credentials from `.env.local` during build. For production, you can:
-- Commit `.env.local` with production values (NOT RECOMMENDED for security)
-- Use GitHub Secrets and environment variables in the workflow (RECOMMENDED)
-
-Your app will be available at: `https://YOUR_USERNAME.github.io/SharePointBot/`
+**Note**: Users can configure their own Azure AD credentials directly in the app's Settings page. No need to embed credentials in the build!
 
 ## Project Structure
 
