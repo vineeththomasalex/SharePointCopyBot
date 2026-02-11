@@ -10,17 +10,26 @@ export interface DeltaResponse {
 
 /**
  * Get initial files using delta query
- * Returns all files and folders in the drive
+ * Returns all files and folders in the drive (or specific folder if folderPath provided)
  */
-export async function getInitialFiles(siteId: string, driveId: string): Promise<DeltaResponse> {
+export async function getInitialFiles(
+  siteId: string,
+  driveId: string,
+  folderPath?: string
+): Promise<DeltaResponse> {
   return executeGraphRequest(async (client) => {
     let allFiles: DriveItem[] = [];
     let nextLink: string | undefined;
     let deltaLink: string | undefined;
 
+    // Build API path based on whether we're syncing a folder or entire drive
+    const apiPath = folderPath
+      ? `/sites/${siteId}/drives/${driveId}/root:/${folderPath}:/delta`
+      : `/sites/${siteId}/drives/${driveId}/root/delta`;
+
     // Initial delta query
     let response = await client
-      .api(`/sites/${siteId}/drives/${driveId}/root/delta`)
+      .api(apiPath)
       .select('id,name,size,webUrl,createdDateTime,lastModifiedDateTime,folder,file,parentReference,deleted')
       .get();
 
@@ -54,16 +63,22 @@ export async function getInitialFiles(siteId: string, driveId: string): Promise<
 export async function getChangedFiles(
   siteId: string,
   driveId: string,
-  deltaToken: string
+  deltaToken: string,
+  folderPath?: string
 ): Promise<DeltaResponse> {
   return executeGraphRequest(async (client) => {
     let allFiles: DriveItem[] = [];
     let nextLink: string | undefined;
     let deltaLink: string | undefined;
 
+    // Build API path based on whether we're syncing a folder or entire drive
+    const apiPath = folderPath
+      ? `/sites/${siteId}/drives/${driveId}/root:/${folderPath}:/delta`
+      : `/sites/${siteId}/drives/${driveId}/root/delta`;
+
     // Delta query with token
     let response = await client
-      .api(`/sites/${siteId}/drives/${driveId}/root/delta`)
+      .api(apiPath)
       .query({ token: deltaToken })
       .select('id,name,size,webUrl,createdDateTime,lastModifiedDateTime,folder,file,parentReference,deleted')
       .get();

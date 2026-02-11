@@ -15,10 +15,12 @@ export interface SyncConfig {
   sourceSiteUrl?: string;
   sourceLibraryId?: string;
   sourceLibraryName?: string;
+  sourceFolderPath?: string;      // Folder path within source library (optional)
   destSiteId?: string;
   destSiteUrl?: string;
   destLibraryId?: string;
   destLibraryName?: string;
+  destFolderPath?: string;        // Folder path within destination library (optional)
   lastSyncTime: Date | null;
   deltaToken: string | null; // For Graph API delta queries
   updatedAt: Date;

@@ -1,4 +1,5 @@
 import { executeGraphRequest } from './graphClient';
+import { parseSharePointUrl, buildGraphSitePath } from '../utils/sharepointUrlParser';
 
 // Type definitions for Graph API responses
 export interface Site {
@@ -133,4 +134,97 @@ export async function getDriveByName(siteId: string, libraryName: string): Promi
  */
 export async function getLibraryInfo(siteId: string, driveId: string): Promise<Drive> {
   return getDrive(siteId, driveId);
+}
+
+/**
+ * Resolved SharePoint location information
+ */
+export interface ResolvedSharePointLocation {
+  siteId: string;
+  siteUrl: string;
+  siteName: string;
+  driveId: string;
+  driveName: string;
+  folderPath: string;
+  folderId?: string;  // Resolved folder item ID (optional)
+}
+
+/**
+ * Resolve a SharePoint URL to site/drive/folder information
+ * This validates user has access and extracts all necessary IDs
+ */
+export async function resolveSharePointUrl(url: string): Promise<ResolvedSharePointLocation> {
+  // Step 1: Parse URL
+  const parsed = parseSharePointUrl(url);
+
+  // Step 2: Get site using URL-based lookup
+  const sitePath = buildGraphSitePath(parsed.hostname, parsed.sitePath);
+  const siteUrl = `https://${parsed.hostname}${parsed.sitePath || ''}`;
+
+  let site: Site;
+  try {
+    site = await getSiteByUrl(sitePath);
+  } catch (error: any) {
+    if (error?.statusCode === 404 || error?.message?.includes('404')) {
+      throw new Error(`SharePoint site not found at: ${siteUrl}. Please check the URL and ensure you have access.`);
+    }
+    if (error?.statusCode === 403 || error?.message?.includes('403') || error?.message?.includes('Access denied')) {
+      throw new Error(`Access denied to SharePoint site: ${siteUrl}. Please ensure you have permission to access this site.`);
+    }
+    throw new Error(`Failed to access SharePoint site: ${error.message || 'Unknown error'}`);
+  }
+
+  // Step 3: Get drives for this site
+  let drives: Drive[];
+  try {
+    drives = await getDrives(site.id);
+  } catch (error: any) {
+    throw new Error(`Failed to list document libraries in site: ${error.message || 'Unknown error'}`);
+  }
+
+  // Step 4: Find matching drive by name
+  const drive = drives.find(d => d.name === parsed.libraryName);
+  if (!drive) {
+    const availableLibraries = drives.map(d => d.name).join(', ');
+    throw new Error(
+      `Document library "${parsed.libraryName}" not found. Available libraries: ${availableLibraries || 'none'}`
+    );
+  }
+
+  // Step 5: Optionally resolve folder ID if folder path provided
+  let folderId: string | undefined;
+  if (parsed.folderPath) {
+    try {
+      const folderItem = await executeGraphRequest(async (client) => {
+        return await client
+          .api(`/sites/${site.id}/drives/${drive.id}/root:/${parsed.folderPath}`)
+          .select('id,name,folder')
+          .get();
+      });
+
+      if (!folderItem.folder) {
+        throw new Error(`Path "${parsed.folderPath}" is not a folder`);
+      }
+
+      folderId = folderItem.id;
+    } catch (error: any) {
+      if (error?.statusCode === 404 || error?.message?.includes('404')) {
+        throw new Error(
+          `Folder not found: "${parsed.folderPath}" in library "${parsed.libraryName}". Please check the URL is correct.`
+        );
+      }
+      throw new Error(`Failed to access folder: ${error.message || 'Unknown error'}`);
+    }
+  }
+
+  // Step 6: Return resolved location
+  return {
+    siteId: site.id,
+    siteUrl: site.webUrl,
+    siteName: site.displayName || site.name,
+    driveId: drive.id,
+    driveName: drive.name,
+    folderPath: parsed.folderPath,
+    folderId
+  };
 }

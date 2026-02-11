@@ -2,22 +2,22 @@ import { Configuration, PublicClientApplication, LogLevel } from '@azure/msal-br
 import { dbHelpers } from '../db/schema';
 
 // Scopes required for SharePoint operations
+// Using Files.ReadWrite (narrower scope) instead of Files.ReadWrite.All
+// to avoid admin consent requirement as of August 2025 policy change
 export const loginRequest = {
   scopes: [
     'User.Read',
-    'Sites.Read.All',
-    'Sites.ReadWrite.All',
-    'Files.ReadWrite.All',
+    'Files.ReadWrite',
     'offline_access'
   ]
 };
 
 // Token request for Graph API calls
+// Using Files.ReadWrite (narrower scope) instead of Files.ReadWrite.All
+// to avoid admin consent requirement as of August 2025 policy change
 export const tokenRequest = {
   scopes: [
-    'Sites.Read.All',
-    'Sites.ReadWrite.All',
-    'Files.ReadWrite.All'
+    'Files.ReadWrite'
   ]
 };
 
@@ -68,13 +68,13 @@ async function loadAuthCredentials(): Promise<{ clientId: string; tenantId: stri
  * Create MSAL configuration
  */
 async function createMsalConfig(): Promise<Configuration> {
-  const { clientId, tenantId } = await loadAuthCredentials();
+  const { clientId, tenantId: _tenantId } = await loadAuthCredentials();
   const redirectUri = import.meta.env.VITE_REDIRECT_URI || window.location.origin;
 
   return {
     auth: {
       clientId,
-      authority: `https://login.microsoftonline.com/${tenantId}`,
+      authority: 'https://login.microsoftonline.com/organizations',
       redirectUri,
       postLogoutRedirectUri: redirectUri
     },

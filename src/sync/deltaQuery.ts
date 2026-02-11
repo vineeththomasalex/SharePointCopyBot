@@ -6,10 +6,12 @@ import { DriveItem } from '../api/sitesApi';
  */
 export async function fetchInitialFiles(
   siteId: string,
-  driveId: string
+  driveId: string,
+  folderPath?: string
 ): Promise<DeltaResponse> {
-  console.log('Fetching initial files from source library...');
-  const result = await getInitialFiles(siteId, driveId);
+  const location = folderPath ? `folder: ${folderPath}` : 'entire library';
+  console.log(`Fetching initial files from source ${location}...`);
+  const result = await getInitialFiles(siteId, driveId, folderPath);
   console.log(`Fetched ${result.files.length} items, delta token: ${result.deltaToken}`);
   return result;
 }
@@ -20,10 +22,12 @@ export async function fetchInitialFiles(
 export async function fetchChangedFiles(
   siteId: string,
   driveId: string,
-  deltaToken: string
+  deltaToken: string,
+  folderPath?: string
 ): Promise<DeltaResponse> {
-  console.log('Fetching changed files using delta token...');
-  const result = await getChangedFiles(siteId, driveId, deltaToken);
+  const location = folderPath ? `folder: ${folderPath}` : 'entire library';
+  console.log(`Fetching changed files from ${location} using delta token...`);
+  const result = await getChangedFiles(siteId, driveId, deltaToken, folderPath);
   console.log(`Fetched ${result.files.length} changed items, new delta token: ${result.deltaToken}`);
   return result;
 }

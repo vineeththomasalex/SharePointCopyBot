@@ -156,7 +156,7 @@ export default function SettingsPage() {
                   value={tenantId}
                   onChange={(e) => setTenantId(e.target.value)}
                   placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
-                  helperText="Found in Azure Portal → App Registrations → Your App → Overview"
+                  helperText="Found in Azure Portal → App Registrations → Your App → Overview. Note: For multi-tenant apps, any organizational account can sign in."
                 />
               </FormControl>
 

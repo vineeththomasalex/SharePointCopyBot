@@ -218,12 +218,14 @@ export class SyncOrchestrator {
     if (!this.config) throw new Error('Configuration is null');
 
     const isInitialSync = !this.config.deltaToken;
+    const folderPath = this.config.sourceFolderPath;
 
     if (isInitialSync) {
       console.log('Performing initial sync...');
       const result = await fetchInitialFiles(
         this.config.sourceSiteId!,
-        this.config.sourceLibraryId!
+        this.config.sourceLibraryId!,
+        folderPath
       );
       return { files: result.files, deltaToken: result.deltaToken };
     } else {
@@ -231,7 +233,8 @@ export class SyncOrchestrator {
       const result = await fetchChangedFiles(
         this.config.sourceSiteId!,
         this.config.sourceLibraryId!,
-        this.config.deltaToken || ''
+        this.config.deltaToken || '',
+        folderPath
       );
       return { files: result.files, deltaToken: result.deltaToken };
     }

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { SyncConfig, AuthConfig, dbHelpers } from '../db/schema';
-import { getSites, getDrives, Site, Drive } from '../api/sitesApi';
+import { getSites, getDrives, Site, Drive, resolveSharePointUrl } from '../api/sitesApi';
 
 interface ConfigState {
   // Sync Config
@@ -13,7 +13,13 @@ interface ConfigState {
   isLoadingAuthConfig: boolean;
   authConfigError: string | null;
 
-  // Sites and Drives
+  // URL-based configuration
+  sourceUrl: string;
+  destUrl: string;
+  isValidatingUrls: boolean;
+  urlValidationError: string | null;
+
+  // Sites and Drives (legacy - kept for backward compatibility)
   sites: Site[];
   sourceDrives: Drive[];
   destDrives: Drive[];
@@ -28,12 +34,17 @@ interface ConfigState {
   updateDestSite: (siteId: string, siteUrl: string) => void;
   updateDestLibrary: (libraryId: string, libraryName: string) => void;
 
+  // Actions - URL-based Config
+  setSourceUrl: (url: string) => void;
+  setDestUrl: (url: string) => void;
+  validateAndSaveUrls: () => Promise<void>;
+
   // Actions - Auth Config
   loadAuthConfig: () => Promise<void>;
   saveAuthConfig: (config: Omit<AuthConfig, 'id' | 'updatedAt'>) => Promise<void>;
   clearAuthConfig: () => Promise<void>;
 
-  // Actions - Sites and Drives
+  // Actions - Sites and Drives (legacy - kept for backward compatibility)
   loadSites: () => Promise<void>;
   loadSourceDrives: (siteId: string) => Promise<void>;
   loadDestDrives: (siteId: string) => Promise<void>;
@@ -52,6 +63,13 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   isLoadingAuthConfig: false,
   authConfigError: null,
 
+  // URL-based configuration
+  sourceUrl: '',
+  destUrl: '',
+  isValidatingUrls: false,
+  urlValidationError: null,
+
+  // Legacy state
   sites: [],
   sourceDrives: [],
   destDrives: [],
@@ -240,6 +258,76 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     }
   },
 
+  // Set source URL
+  setSourceUrl: (url: string) => set({ sourceUrl: url, urlValidationError: null }),
+
+  // Set destination URL
+  setDestUrl: (url: string) => set({ destUrl: url, urlValidationError: null }),
+
+  // Validate and save URLs
+  validateAndSaveUrls: async () => {
+    const { sourceUrl, destUrl } = get();
+
+    try {
+      set({ isValidatingUrls: true, urlValidationError: null });
+
+      // Validate URLs are not empty
+      if (!sourceUrl || !destUrl) {
+        throw new Error('Please provide both source and destination URLs');
+      }
+
+      // Resolve both URLs
+      console.log('Resolving source URL:', sourceUrl);
+      const sourceLocation = await resolveSharePointUrl(sourceUrl);
+
+      console.log('Resolving destination URL:', destUrl);
+      const destLocation = await resolveSharePointUrl(destUrl);
+
+      console.log('URLs resolved successfully:', {
+        source: sourceLocation,
+        dest: destLocation
+      });
+
+      // Get current config to preserve delta token
+      const currentConfig = get().syncConfig;
+
+      // Update config with resolved information
+      const config: Omit<SyncConfig, 'id' | 'updatedAt'> = {
+        sourceSiteId: sourceLocation.siteId,
+        sourceSiteUrl: sourceLocation.siteUrl,
+        sourceLibraryId: sourceLocation.driveId,
+        sourceLibraryName: sourceLocation.driveName,
+        sourceFolderPath: sourceLocation.folderPath || undefined,
+        destSiteId: destLocation.siteId,
+        destSiteUrl: destLocation.siteUrl,
+        destLibraryId: destLocation.driveId,
+        destLibraryName: destLocation.driveName,
+        destFolderPath: destLocation.folderPath || undefined,
+        lastSyncTime: currentConfig?.lastSyncTime || null,
+        deltaToken: currentConfig?.deltaToken || null
+      };
+
+      // Save to IndexedDB
+      await dbHelpers.saveSyncConfig(config);
+
+      // Reload config from DB
+      const newConfig = await dbHelpers.getSyncConfig();
+
+      set({
+        syncConfig: newConfig || null,
+        isValidatingUrls: false,
+        urlValidationError: null
+      });
+    } catch (error: any) {
+      console.error('Failed to validate URLs:', error);
+      set({
+        isValidatingUrls: false,
+        urlValidationError: error.message || 'Failed to validate URLs'
+      });
+      throw error;
+    }
+  },
+
   // Reset store
   reset: () => {
     set({
@@ -249,6 +337,10 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       authConfig: null,
       isLoadingAuthConfig: false,
       authConfigError: null,
+      sourceUrl: '',
+      destUrl: '',
+      isValidatingUrls: false,
+      urlValidationError: null,
       sites: [],
       sourceDrives: [],
       destDrives: [],
