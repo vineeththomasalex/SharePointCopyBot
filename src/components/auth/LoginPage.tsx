@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -7,14 +7,30 @@ import {
   Paper,
   Typography,
   CircularProgress,
-  Alert
+  Alert,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions
 } from '@mui/material';
-import { Login as LoginIcon, Settings as SettingsIcon } from '@mui/icons-material';
+import {
+  Login as LoginIcon,
+  Settings as SettingsIcon,
+  DeleteForever as ClearIcon
+} from '@mui/icons-material';
 import { useAuthStore } from '../../store/authStore';
+import { useConfigStore } from '../../store/configStore';
+import { dbHelpers } from '../../db/schema';
+import { getMsalInstance, isMsalInitialized } from '../../auth/msalConfig';
 
 export default function LoginPage() {
   const navigate = useNavigate();
   const { isAuthenticated, account, isLoading, error, needsCredentials, login, clearError } = useAuthStore();
+  const { clearAuthConfig, reset: resetConfigStore } = useConfigStore();
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearSuccess, setClearSuccess] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated && account) {
@@ -28,6 +44,53 @@ export default function LoginPage() {
       await login();
     } catch (error) {
       console.error('Login error:', error);
+    }
+  };
+
+  const handleClearSettings = async () => {
+    try {
+      setClearing(true);
+
+      // Clear auth config from database and store
+      await clearAuthConfig();
+
+      // Clear all data from database
+      await dbHelpers.clearAllData();
+
+      // Reset config store
+      resetConfigStore();
+
+      // Clear MSAL cache if initialized
+      if (isMsalInitialized()) {
+        const msalInstance = getMsalInstance();
+        const accounts = msalInstance.getAllAccounts();
+
+        // Clear localStorage cache
+        localStorage.removeItem('msal.account.keys');
+        localStorage.removeItem('msal.token.keys');
+
+        // Log out all accounts
+        for (const account of accounts) {
+          try {
+            await msalInstance.logoutPopup({ account });
+          } catch (error) {
+            console.warn('Failed to logout account:', error);
+          }
+        }
+      }
+
+      setClearSuccess(true);
+      setClearDialogOpen(false);
+
+      // Reload page after a short delay to reset everything
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error: any) {
+      console.error('Failed to clear settings:', error);
+      alert('Failed to clear settings: ' + error.message);
+    } finally {
+      setClearing(false);
     }
   };
 
@@ -88,12 +151,60 @@ export default function LoginPage() {
         </Button>
 
         <Box sx={{ mt: 4, pt: 3, borderTop: 1, borderColor: 'divider' }}>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" paragraph>
             By signing in, you agree to grant this app access to your SharePoint sites
             and files for synchronization purposes.
           </Typography>
+
+          {clearSuccess && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              Settings cleared successfully! Reloading page...
+            </Alert>
+          )}
+
+          <Button
+            size="small"
+            startIcon={<ClearIcon />}
+            onClick={() => setClearDialogOpen(true)}
+            disabled={clearing}
+            color="error"
+            variant="outlined"
+            sx={{ mt: 1 }}
+          >
+            Clear All Settings
+          </Button>
         </Box>
       </Paper>
+
+      {/* Clear Settings Confirmation Dialog */}
+      <Dialog open={clearDialogOpen} onClose={() => setClearDialogOpen(false)}>
+        <DialogTitle>Clear All Settings?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            This will remove all stored data including:
+            <ul>
+              <li>Azure AD app credentials</li>
+              <li>Sync configuration</li>
+              <li>File snapshots and sync history</li>
+              <li>Authentication tokens</li>
+            </ul>
+            You will need to reconfigure the app after clearing. This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setClearDialogOpen(false)} disabled={clearing}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleClearSettings}
+            color="error"
+            disabled={clearing}
+            startIcon={clearing ? <CircularProgress size={16} /> : <ClearIcon />}
+          >
+            {clearing ? 'Clearing...' : 'Clear All Settings'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Container>
   );
 }
