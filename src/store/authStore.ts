@@ -15,6 +15,7 @@ interface AuthState {
   account: AccountInfo | null;
   isLoading: boolean;
   error: string | null;
+  needsCredentials: boolean;
 
   // Actions
   initialize: () => Promise<void>;
@@ -32,6 +33,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   account: null,
   isLoading: false,
   error: null,
+  needsCredentials: false,
 
   // Initialize MSAL
   initialize: async () => {
@@ -50,10 +52,14 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
     } catch (error: any) {
       console.error('Failed to initialize auth:', error);
+      const needsCredentials = error.message === 'NO_CREDENTIALS';
       set({
         isInitialized: true,
         isLoading: false,
-        error: error.message || 'Failed to initialize authentication'
+        needsCredentials,
+        error: needsCredentials
+          ? 'Azure AD credentials not configured'
+          : (error.message || 'Failed to initialize authentication')
       });
     }
   },

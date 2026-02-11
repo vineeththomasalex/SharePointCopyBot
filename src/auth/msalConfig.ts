@@ -48,14 +48,20 @@ async function loadAuthCredentials(): Promise<{ clientId: string; tenantId: stri
   const clientId = import.meta.env.VITE_DEFAULT_CLIENT_ID;
   const tenantId = import.meta.env.VITE_DEFAULT_TENANT_ID;
 
-  if (!clientId || !tenantId || clientId === 'your-client-id-here' || tenantId === 'your-tenant-id-here') {
-    throw new Error(
-      'Azure AD credentials not configured. Please configure them in Settings or update the .env.local file.'
-    );
+  // Check if environment variables are properly configured
+  const hasValidEnvVars = clientId && tenantId &&
+    clientId !== 'your-client-id-here' &&
+    tenantId !== 'your-tenant-id-here';
+
+  if (hasValidEnvVars) {
+    console.log('Using default Azure AD credentials from environment variables');
+    return { clientId, tenantId };
   }
 
-  console.log('Using default Azure AD credentials from environment variables');
-  return { clientId, tenantId };
+  // No credentials available - user must configure in Settings
+  throw new Error(
+    'NO_CREDENTIALS'
+  );
 }
 
 /**

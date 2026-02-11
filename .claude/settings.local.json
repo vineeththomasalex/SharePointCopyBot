@@ -8,7 +8,13 @@
       "Bash(dir:*)",
       "Bash(.github/workflows/deploy.yml << 'EOF'\nname: Deploy to GitHub Pages\n\non:\n  push:\n    branches: [ gh-pages-source ]\n  workflow_dispatch:\n\n# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages\npermissions:\n  contents: read\n  pages: write\n  id-token: write\n\n# Allow one concurrent deployment\nconcurrency:\n  group: \"pages\"\n  cancel-in-progress: true\n\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - name: Checkout\n        uses: actions/checkout@v4\n\n      - name: Setup Node\n        uses: actions/setup-node@v4\n        with:\n          node-version: '20'\n          cache: 'npm'\n\n      - name: Install dependencies\n        run: npm ci\n\n      - name: Build\n        run: npm run build\n        env:\n          # Use default credentials from secrets\n          VITE_DEFAULT_CLIENT_ID: ${{ secrets.VITE_DEFAULT_CLIENT_ID }}\n          VITE_DEFAULT_TENANT_ID: ${{ secrets.VITE_DEFAULT_TENANT_ID }}\n          VITE_REDIRECT_URI: ${{ secrets.VITE_REDIRECT_URI }}\n\n      - name: Setup Pages\n        uses: actions/configure-pages@v4\n\n      - name: Upload artifact\n        uses: actions/upload-pages-artifact@v3\n        with:\n          path: './dist'\n\n  deploy:\n    environment:\n      name: github-pages\n      url: ${{ steps.deployment.outputs.page_url }}\n    runs-on: ubuntu-latest\n    needs: build\n    steps:\n      - name: Deploy to GitHub Pages\n        id: deployment\n        uses: actions/deploy-pages@v4\nEOF)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: SharePoint Copy Bot implementation\n\n- Complete React + TypeScript application with Vite\n- MSAL authentication with PKCE flow\n- Microsoft Graph API integration for SharePoint operations\n- IndexedDB persistence with Dexie\n- Sync orchestration with delta queries\n- Material-UI components for dashboard, config, history, and settings\n- Support for custom Azure AD app configuration\n- GitHub Pages deployment ready\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git remote add:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(npm run deploy:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix GitHub Pages deployment issues\n\n- Update Router basename from /SharePointBot to /SharePointCopyBot\n- Improve credentials error handling - show helpful message when not configured\n- Make Settings page accessible without authentication for initial setup\n- Add needsCredentials flag to guide users to configure Azure AD app\n- Disable login button when credentials not configured\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

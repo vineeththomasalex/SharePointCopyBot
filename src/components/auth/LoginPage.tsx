@@ -9,12 +9,12 @@ import {
   CircularProgress,
   Alert
 } from '@mui/material';
-import { Login as LoginIcon } from '@mui/icons-material';
+import { Login as LoginIcon, Settings as SettingsIcon } from '@mui/icons-material';
 import { useAuthStore } from '../../store/authStore';
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, account, isLoading, error, login, clearError } = useAuthStore();
+  const { isAuthenticated, account, isLoading, error, needsCredentials, login, clearError } = useAuthStore();
 
   useEffect(() => {
     if (isAuthenticated && account) {
@@ -43,7 +43,23 @@ export default function LoginPage() {
           </Typography>
         </Box>
 
-        {error && (
+        {error && needsCredentials && (
+          <Alert severity="warning" sx={{ mb: 3 }}>
+            <Typography variant="body2" gutterBottom>
+              {error}. Please configure your Azure AD app credentials in Settings.
+            </Typography>
+            <Button
+              size="small"
+              startIcon={<SettingsIcon />}
+              onClick={() => navigate('/settings')}
+              sx={{ mt: 1 }}
+            >
+              Go to Settings
+            </Button>
+          </Alert>
+        )}
+
+        {error && !needsCredentials && (
           <Alert severity="error" sx={{ mb: 3 }} onClose={clearError}>
             {error}
           </Alert>
@@ -64,7 +80,7 @@ export default function LoginPage() {
           size="large"
           startIcon={isLoading ? <CircularProgress size={20} color="inherit" /> : <LoginIcon />}
           onClick={handleLogin}
-          disabled={isLoading}
+          disabled={isLoading || needsCredentials}
           fullWidth
           sx={{ py: 1.5 }}
         >

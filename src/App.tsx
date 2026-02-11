@@ -75,7 +75,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <BrowserRouter basename="/SharePointBot">
+      <BrowserRouter basename="/SharePointCopyBot">
         <Routes>
           <Route path="/" element={<LoginPage />} />
           <Route
@@ -104,11 +104,7 @@ function App() {
           />
           <Route
             path="/settings"
-            element={
-              <ProtectedRoute>
-                <SettingsPage />
-              </ProtectedRoute>
-            }
+            element={<SettingsPage />}
           />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
