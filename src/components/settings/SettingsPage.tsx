@@ -11,9 +11,12 @@ import {
   Typography,
   Alert,
   Link,
-  Divider
+  Divider,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
-import { Save as SaveIcon } from '@mui/icons-material';
+import { Save as SaveIcon, ExpandMore as ExpandMoreIcon, HelpOutline as HelpIcon } from '@mui/icons-material';
 import AppLayout from '../layout/AppLayout';
 import { useConfigStore } from '../../store/configStore';
 import { useAuthStore } from '../../store/authStore';
@@ -136,9 +139,86 @@ export default function SettingsPage() {
                   >
                     official Microsoft documentation
                   </Link>
-                  {' '}or see the AZURE_AD_SETUP.md file in the project repository.
+                  {' '}or see the detailed setup instructions below.
                 </Typography>
               </Alert>
+
+              <Accordion sx={{ mb: 3 }}>
+                <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <HelpIcon color="primary" />
+                    <Typography>Step-by-Step: Azure AD App Setup</Typography>
+                  </Box>
+                </AccordionSummary>
+                <AccordionDetails>
+                  <Typography variant="subtitle2" gutterBottom>
+                    <strong>Step 1: Register Application</strong>
+                  </Typography>
+                  <Box component="ol" sx={{ pl: 2, mb: 2, '& li': { mb: 1 } }}>
+                    <li>Go to <Link href="https://portal.azure.com" target="_blank">Azure Portal</Link></li>
+                    <li>Navigate to "Microsoft Entra ID" (formerly Azure Active Directory)</li>
+                    <li>Click "App registrations" → "New registration"</li>
+                    <li>Name: "SharePoint Copy Bot" (or your preferred name)</li>
+                    <li>Supported account types: "Accounts in any organizational directory (Any Microsoft Entra ID tenant - Multitenant)"</li>
+                    <li>Redirect URI: Select "Single-page application (SPA)" and enter your app URL</li>
+                    <li>Click "Register"</li>
+                  </Box>
+
+                  <Typography variant="subtitle2" gutterBottom>
+                    <strong>Step 2: Configure API Permissions (CRITICAL)</strong>
+                  </Typography>
+                  <Alert severity="error" sx={{ mb: 2 }}>
+                    <Typography variant="body2" gutterBottom>
+                      <strong>⚠️ IMPORTANT: Use the EXACT permissions below. Wrong permissions will require admin consent!</strong>
+                    </Typography>
+                  </Alert>
+                  <Box component="ol" sx={{ pl: 2, mb: 2, '& li': { mb: 1 } }}>
+                    <li>In your app, go to "API permissions"</li>
+                    <li>Click "Add a permission" → "Microsoft Graph" → "Delegated permissions"</li>
+                    <li>Add these permissions:
+                      <Box component="ul" sx={{ mt: 1 }}>
+                        <li><strong>User.Read</strong> - Basic user profile (automatically added)</li>
+                        <li><strong>Files.ReadWrite</strong> - Read/write user files (NO admin consent required)</li>
+                        <li><strong>offline_access</strong> - Maintain access to data (automatically added)</li>
+                      </Box>
+                    </li>
+                    <li><strong>DO NOT ADD:</strong>
+                      <Box component="ul" sx={{ mt: 1, color: 'error.main' }}>
+                        <li>❌ Files.ReadWrite.All (requires admin consent)</li>
+                        <li>❌ Sites.Read.All (requires admin consent)</li>
+                        <li>❌ Sites.ReadWrite.All (requires admin consent)</li>
+                      </Box>
+                    </li>
+                    <li>Click "Add permissions"</li>
+                  </Box>
+
+                  <Alert severity="warning" sx={{ mb: 2 }}>
+                    <Typography variant="body2">
+                      <strong>Difference:</strong> Files.ReadWrite allows access to files the user provides URLs for.
+                      Files.ReadWrite.All allows browsing ALL sites, which requires admin consent.
+                    </Typography>
+                  </Alert>
+
+                  <Typography variant="subtitle2" gutterBottom>
+                    <strong>Step 3: Enable Public Client Flow (Optional)</strong>
+                  </Typography>
+                  <Box component="ol" sx={{ pl: 2, mb: 2, '& li': { mb: 1 } }}>
+                    <li>Go to "Authentication"</li>
+                    <li>Scroll to "Advanced settings"</li>
+                    <li>Enable "Allow public client flows": Yes</li>
+                    <li>Click "Save"</li>
+                  </Box>
+
+                  <Typography variant="subtitle2" gutterBottom>
+                    <strong>Step 4: Copy Application IDs</strong>
+                  </Typography>
+                  <Box component="ol" sx={{ pl: 2, '& li': { mb: 1 } }}>
+                    <li>Go to "Overview"</li>
+                    <li>Copy "Application (client) ID" and paste below</li>
+                    <li>Copy "Directory (tenant) ID" and paste below</li>
+                  </Box>
+                </AccordionDetails>
+              </Accordion>
 
               <FormControl fullWidth sx={{ mb: 2 }}>
                 <TextField
@@ -161,8 +241,11 @@ export default function SettingsPage() {
               </FormControl>
 
               <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 2 }}>
-                <strong>Required API Permissions:</strong> User.Read, Sites.Read.All,
-                Sites.ReadWrite.All, Files.ReadWrite.All, offline_access
+                <strong>Required API Permissions:</strong> User.Read, Files.ReadWrite, offline_access
+              </Typography>
+              <Typography variant="caption" color="warning.main" display="block" sx={{ mb: 2 }}>
+                ⚠️ <strong>Important:</strong> Use Files.ReadWrite (NOT Files.ReadWrite.All) to avoid admin consent requirement.
+                Do NOT add Sites.Read.All or Sites.ReadWrite.All permissions.
               </Typography>
             </Box>
           )}
